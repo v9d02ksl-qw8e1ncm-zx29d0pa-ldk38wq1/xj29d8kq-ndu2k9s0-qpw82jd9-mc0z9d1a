@@ -1888,7 +1888,7 @@ do
     addLine(".bye username — Flings the target")
     addLine(".autofarm — Auto farms exp while AFK. Use again to disable.")
     addLine(".shootmurd — Shoots the murder if hiding or else (No need to use just to shoot this command is just used to kill murder that was hiding or exploiting flying.)")
-    addLine(".tp username — Teleports you to the target, partial name supports ex. .tp jv full user is jvpogi233j)
+    addLine(".tp username — Teleports you to the target, partial name supports ex. .tp jv full user is jvpogi233j")
 
     addSection("AUTO FEATURES")
     addLine("Walk speed is locked to 19. (org. 17)")
