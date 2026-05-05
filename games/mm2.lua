@@ -1840,36 +1840,31 @@ do
     end
 
     addSection("VISUALS")
-    addLine("Red label + outline = Murderer (has Knife)")
-    addLine("Blue label + outline = Sheriff (has Gun before it's dropped)")
-    addLine("Yellow label + outline = Hero (picked up the dropped Gun)")
-    addLine("Green label = Innocent — only visible when you are the Murderer")
-    addLine("Green dot 'Gun' = Dropped gun location in the map")
-
-    addSection("WHEN VISUALS APPEAR")
-    addLine("Labels and outlines appear once a round starts and roles are detected from held items.")
-    addLine("Gun drop marker appears the moment the murderer drops the gun.")
-    addLine("All visuals clear 15 seconds after the round ends. (For cleanup)")
+    addLine("Red box + outline = Murderer")
+    addLine("Blue box + outline = Sheriff")
+    addLine("Yellow box + outline = Hero")
+    addLine("Green box = Innocent — only visible when you are the Murderer (for optimization and clean)")
+    addLine("Green box 'Gun' = Dropped gun location in the map")
 
     addSection("BUTTONS")
     addLine("Throw Knife — Shown when you are the Murderer. Right-click or tap to auto-throw at the nearest visible player.")
     addLine("Grab Gun — Shown when the gun is dropped and you are innocent (not Sheriff). Tap or press G to teleport to the gun and pick it up.")
 
     addSection("CHAT COMMANDS")
-    addLine(".help — Open or close this window")
+    addLine(".help — Open this window")
     addLine(".killall — Kills all players (Murderer only)")
-    addLine(".kill username — Kills the specific player (Murderer only)")
-    addLine(".bye username — Flings a user")
-    addLine(".autofarm — Auto farms exp and coins while AFK. Use again to disable.")
-    addLine(".shootmurd — Loops teleporting 15 studs in front of murderer and shooting. Requires gun. Use again to stop. Teleports back to murderer's last position on stop.")
-    addLine(".tp username — Teleports you to a player by partial username.")
-    addLine(".help — Shows this window")
+    addLine(".kill username — Kills the target player (Murderer only)")
+    addLine(".bye username — Flings the target)
+    addLine(".autofarm — Auto farms exp while AFK. Use again to disable.")
+    addLine(".shootmurd — Shoots the murder if hiding or else (No need to use just to shoot this command is just used to kill murder that was hiding or exploiting flying.)")
+    addLine(".tp username — Teleports you to the target, partial name supports ex. .tp jv full user is jvpogi233j)
+    addLine(".(itemname) or .(item1,item2) — Value of an item searcher.")
 
     addSection("AUTO FEATURES")
     addLine("Walk speed is locked to 19. (org. 17)")
     addLine("Jump power is locked to 55. (org. 50)")
-    addLine("Auto-aim fires at the Murderer on left-click or tap with movement prediction.")
-    addLine("Auto killall triggers after 30 seconds idle as Murderer.")
+    addLine("Silent aim not an aimbot so camera is not locked to the murderer on left-click or tap with smart movement prediction.")
+    addLine("Auto killall triggers after 20 seconds idle as Murderer.")
 
     local dragging = false
     local dragInput, dragStart, startPos
