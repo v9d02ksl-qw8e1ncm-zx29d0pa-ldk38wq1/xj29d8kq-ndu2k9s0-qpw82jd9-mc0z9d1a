@@ -1,4 +1,4 @@
-print("V2.114.265")
+print("V2.114.266")
 if _G.__ShadowX_Running then return end
 _G.__ShadowX_Running = true
 
@@ -2307,6 +2307,12 @@ RunService.Heartbeat:Connect(function()
     local vel = hrp.AssemblyLinearVelocity
     if vel.Magnitude > MAX_VELOCITY then
         hrp.AssemblyLinearVelocity = vel.Unit * MAX_VELOCITY
+    end
+    if isInLobby() then
+        if autofarmActive then stopAutofarm() end
+        if murderGui and murderGui.Enabled then murderGui.Enabled = false end
+        if innocentGui and innocentGui.Enabled then innocentGui.Enabled = false end
+        return
     end
     if isLpMurd then
         local hSpeed = Vector3.new(vel.X, 0, vel.Z).Magnitude
