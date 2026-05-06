@@ -1435,15 +1435,14 @@ local function runAutofarm()
                     if not h2 then return false end
                     return (a.Position - h2.Position).Magnitude < (b.Position - h2.Position).Magnitude
                 end)
-                local fired = {}
                 while autofarmActive and roundActive do
                     local myC2 = lp.Character
                     local myH2 = myC2 and myC2:FindFirstChild("HumanoidRootPart")
                     if not myH2 then break end
                     local nearest = nil
                     local nearDist = math.huge
-                    for _, cs2 in ipairs(pending) do
-                        if not fired[cs2] and coinHasVisual(cs2) then
+                    for _, cs2 in ipairs(getCoinServers()) do
+                        if coinHasVisual(cs2) then
                             local d = (cs2.Position - myH2.Position).Magnitude
                             if d < nearDist then nearest = cs2 nearDist = d end
                         end
@@ -1455,7 +1454,6 @@ local function runAutofarm()
                     local myC3 = lp.Character
                     local myH3 = myC3 and myC3:FindFirstChild("HumanoidRootPart")
                     if myH3 then pcall(firetouchinterest, nearest, myH3, 0) end
-                    fired[nearest] = true
                 end
                 task.wait(0.1)
             end
