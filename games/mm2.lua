@@ -1,4 +1,4 @@
-print("V2.113.264")
+print("V2.114.265")
 if _G.__ShadowX_Running then return end
 _G.__ShadowX_Running = true
 
@@ -36,6 +36,7 @@ local timerLabel     = nil
 local lpSheriffLastShot = 0
 local roundId        = 0
 local smActive       = false
+local afPlatform = nila
 local smLastPos      = nil
 local knifeSpeedBuf  = {}
 local KNIFE_SPEED_CAP = 10
@@ -1300,10 +1301,6 @@ local function parseTimer(text)
     return nil
 end
 
-local function freezeAbove(hrp)
-    hrp.CFrame = CFrame.new(hrp.Position + Vector3.new(0, 150, 0))
-end
-
 local function waitUntilTimer(secs, guard)
     while autofarmActive do
         if guard and not guard() then return false end
@@ -1350,8 +1347,57 @@ local function doAutofarmShoot()
     end)
 end
 
+local function tweenHRP(targetPos, speed)
+    local c = lp.Character
+    local h = c and c:FindFirstChild("HumanoidRootPart")
+    if not h then return end
+    local startPos = h.Position
+    local dist = (targetPos - startPos).Magnitude
+    if dist < 0.5 then return end
+    local dur = dist / speed
+    local t0 = tick()
+    repeat
+        task.wait()
+        local frac = math.clamp((tick() - t0) / dur, 0, 1)
+        local c2 = lp.Character
+        local h2 = c2 and c2:FindFirstChild("HumanoidRootPart")
+        if not h2 or not autofarmActive or not roundActive then return end
+        h2.CFrame = CFrame.new(startPos:Lerp(targetPos, frac))
+    until (tick() - t0) >= dur or not autofarmActive or not roundActive
+end
+
+local function getCoinServers()
+    local list = {}
+    for _, obj in ipairs(Workspace:GetDescendants()) do
+        if obj.Name == "CoinContainer" then
+            local ch = obj:GetChildren()
+            if ch[2] then table.insert(list, ch[2]) end
+        end
+    end
+    return list
+end
+
+local function coinHasVisual(cs)
+    return cs:FindFirstChild("CoinVisual", true) ~= nil
+end
+
+local function spawnAFPlatform(pos)
+    if afPlatform and afPlatform.Parent then afPlatform:Destroy() end
+    local p = Instance.new("Part")
+    p.Name         = "ShadowX_AFPlatform"
+    p.Anchored     = true
+    p.CanCollide   = true
+    p.Size         = Vector3.new(10, 1, 10)
+    p.Transparency = 0.5
+    p.CFrame       = CFrame.new(pos)
+    p.Parent       = Workspace
+    afPlatform     = p
+    return p
+end
+
 local function stopAutofarm()
     autofarmActive = false
+    if afPlatform and afPlatform.Parent then afPlatform:Destroy() end
     local char = lp.Character
     local hrp  = char and char:FindFirstChild("HumanoidRootPart")
     if hrp and hrp.Anchored then hrp.Anchored = false end
@@ -1364,58 +1410,158 @@ local function runAutofarm()
             local char = lp.Character
             local hrp  = char and char:FindFirstChild("HumanoidRootPart")
             if not hrp then task.wait(0.5) continue end
+            if hrp.Anchored then hrp.Anchored = false end
+
+            while autofarmActive and roundActive do
+                local myC = lp.Character
+                local myH = myC and myC:FindFirstChild("HumanoidRootPart")
+                if not myH then break end
+                local servers = getCoinServers()
+                local pending = {}
+                for _, cs in ipairs(servers) do
+                    if coinHasVisual(cs) then table.insert(pending, cs) end
+                end
+                if #pending == 0 then break end
+                table.sort(pending, function(a, b)
+                    local h2 = lp.Character and lp.Character:FindFirstChild("HumanoidRootPart")
+                    if not h2 then return false end
+                    return (a.Position - h2.Position).Magnitude < (b.Position - h2.Position).Magnitude
+                end)
+                for _, cs in ipairs(pending) do
+                    if not autofarmActive or not roundActive then break end
+                    if not coinHasVisual(cs) then continue end
+                    tweenHRP(cs.Position, 40)
+                    if not autofarmActive or not roundActive then break end
+                    task.wait(0.2)
+                    local myC2 = lp.Character
+                    local myH2 = myC2 and myC2:FindFirstChild("HumanoidRootPart")
+                    if myH2 then pcall(firetouchinterest, cs, myH2, 0) end
+                end
+                task.wait(0.1)
+            end
+
+            if not autofarmActive then break end
 
             if isLpMurd then
-                local knife = char:FindFirstChild("Knife")
-                if not knife then
-                    local bp = lp:FindFirstChild("Backpack")
-                    knife = bp and bp:FindFirstChild("Knife")
-                end
-                if not knife then task.wait(0.3) continue end
                 while autofarmActive and roundActive and isLpMurd do
                     pcall(doKillAll)
                     task.wait(3)
                 end
 
             elseif isLpSheriff then
-                if not hrp.Anchored then freezeAbove(hrp) end
+                local c2 = lp.Character
+                local h2 = c2 and c2:FindFirstChild("HumanoidRootPart")
+                if h2 then
+                    local platPos = h2.Position + Vector3.new(0, 150, 0)
+                    spawnAFPlatform(platPos)
+                    h2.CFrame = CFrame.new(platPos + Vector3.new(0, 1.5, 0))
+                end
                 local ok = waitUntilTimer(30, function()
                     return autofarmActive and roundActive and isLpSheriff
                 end)
                 if ok and autofarmActive then
-                    doAutofarmShoot()
+                    if afPlatform and afPlatform.Parent then afPlatform:Destroy() end
+                    local shootConn
+                    shootConn = RunService.Heartbeat:Connect(function()
+                        if not autofarmActive or not roundActive or not murderer then
+                            shootConn:Disconnect()
+                            return
+                        end
+                        local mChar = murderer.Character
+                        local mHRP  = mChar and mChar:FindFirstChild("HumanoidRootPart")
+                        if not mHRP then return end
+                        local myChar = lp.Character
+                        local myHRP  = myChar and myChar:FindFirstChild("HumanoidRootPart")
+                        if not myHRP then return end
+                        myHRP.CFrame = CFrame.new(mHRP.Position + mHRP.CFrame.LookVector * 15, mHRP.Position)
+                        local aimPos = getAimPosition() or mHRP.Position
+                        local remote = getShootRemote()
+                        if remote then
+                            pcall(function()
+                                remote:FireServer(CFrame.new(myHRP.Position, aimPos), CFrame.new(aimPos))
+                            end)
+                        end
+                    end)
+                    while autofarmActive and roundActive do task.wait(0.5) end
+                    shootConn:Disconnect()
                 end
-                task.wait(0.5)
 
             else
-                if not hrp.Anchored then freezeAbove(hrp) end
-                while autofarmActive and not gunDropped and roundActive do
-                    task.wait(0.5)
+                local c2 = lp.Character
+                local h2 = c2 and c2:FindFirstChild("HumanoidRootPart")
+                if h2 then
+                    local platPos = h2.Position + Vector3.new(0, 150, 0)
+                    spawnAFPlatform(platPos)
+                    h2.CFrame = CFrame.new(platPos + Vector3.new(0, 1.5, 0))
                 end
+                while autofarmActive and not gunDropped and roundActive do task.wait(0.5) end
                 if autofarmActive and gunDropped and roundActive then
-                    while autofarmActive and roundActive do
-                        local gd = Workspace:FindFirstChild("GunDrop", true)
-                        if not gd then break end
-                        local c2 = lp.Character
-                        local h2 = c2 and c2:FindFirstChild("HumanoidRootPart")
-                        if h2 then h2.Anchored = false end
-                        pcall(doGrabGun)
-                        task.wait(0.1)
-                        local c3 = lp.Character
-                        local h3 = c3 and c3:FindFirstChild("HumanoidRootPart")
-                        if h3 then freezeAbove(h3) end
-                        task.wait(0.3)
+                    if afPlatform and afPlatform.Parent then afPlatform:Destroy() end
+                    local c3 = lp.Character
+                    local h3 = c3 and c3:FindFirstChild("HumanoidRootPart")
+                    if h3 then h3.Anchored = false end
+                    pcall(doGrabGun)
+                    task.wait(0.3)
+                    local c4 = lp.Character
+                    local h4 = c4 and c4:FindFirstChild("HumanoidRootPart")
+                    if h4 then
+                        local platPos2 = h4.Position + Vector3.new(0, 150, 0)
+                        spawnAFPlatform(platPos2)
+                        h4.CFrame = CFrame.new(platPos2 + Vector3.new(0, 1.5, 0))
                     end
-                    local ok = waitUntilTimer(60, function()
+                    local ok = waitUntilTimer(30, function()
                         return autofarmActive and roundActive and not isLpMurd
                     end)
                     if ok and autofarmActive then
-                        doAutofarmShoot()
+                        if afPlatform and afPlatform.Parent then afPlatform:Destroy() end
+                        local myChar = lp.Character
+                        local myHRP  = myChar and myChar:FindFirstChild("HumanoidRootPart")
+                        if myHRP and not myChar:FindFirstChild("Gun") then
+                            local bp = lp:FindFirstChild("Backpack")
+                            local bpGun = bp and bp:FindFirstChild("Gun")
+                            if bpGun then
+                                local hum = myChar:FindFirstChildOfClass("Humanoid")
+                                if hum then pcall(function() hum:EquipTool(bpGun) end) end
+                                task.wait(0.1)
+                            end
+                        end
+                        local lastMurdPos = nil
+                        local shootConn
+                        shootConn = RunService.Heartbeat:Connect(function()
+                            if not autofarmActive or not roundActive or not murderer then
+                                shootConn:Disconnect()
+                                if lastMurdPos then
+                                    local mc = lp.Character
+                                    local mh = mc and mc:FindFirstChild("HumanoidRootPart")
+                                    if mh then mh.CFrame = CFrame.new(lastMurdPos) end
+                                end
+                                return
+                            end
+                            local mChar = murderer.Character
+                            local mHRP  = mChar and mChar:FindFirstChild("HumanoidRootPart")
+                            if not mHRP then return end
+                            lastMurdPos = mHRP.Position
+                            local myChar2 = lp.Character
+                            local myHRP2  = myChar2 and myChar2:FindFirstChild("HumanoidRootPart")
+                            if not myHRP2 then return end
+                            myHRP2.CFrame = CFrame.new(mHRP.Position + mHRP.CFrame.LookVector * 15, mHRP.Position)
+                            local aimPos = getAimPosition() or mHRP.Position
+                            local remote = getShootRemote()
+                            if remote then
+                                pcall(function()
+                                    remote:FireServer(CFrame.new(myHRP2.Position, aimPos), CFrame.new(aimPos))
+                                end)
+                            end
+                        end)
+                        while autofarmActive and roundActive do task.wait(0.5) end
+                        shootConn:Disconnect()
                     end
                 end
-                task.wait(0.5)
             end
+
+            task.wait(1)
         end
+        if afPlatform and afPlatform.Parent then afPlatform:Destroy() end
         local char = lp.Character
         local hrp  = char and char:FindFirstChild("HumanoidRootPart")
         if hrp and hrp.Anchored then hrp.Anchored = false end
