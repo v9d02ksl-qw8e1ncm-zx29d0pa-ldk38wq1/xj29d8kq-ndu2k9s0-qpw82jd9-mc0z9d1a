@@ -1928,11 +1928,21 @@ for _, desc in ipairs(Workspace:GetDescendants()) do
     end
 end
 
-for _, obj in ipairs(Workspace:GetChildren()) do
-    if obj.Name == "Part" and obj:IsA("BasePart") then
-        obj.Size = Vector3.new(7, 7, 7)
+local function resizeParts()
+    for _, obj in ipairs(Workspace:GetDescendants()) do
+        if obj.Name == "Part" and obj:IsA("BasePart") and obj.Size == Vector3.new(1, 1, 1) then
+            obj.Size = Vector3.new(4, 4, 4)
+        end
     end
 end
+
+resizeParts()
+
+Workspace.DescendantAdded:Connect(function(obj)
+    if obj.Name == "Part" and obj:IsA("BasePart") and obj.Size == Vector3.new(1, 1, 1) then
+        obj.Size = Vector3.new(4, 4, 4)
+    end
+end)
 
 if gunAvailable and innocentGui then
     innocentGui.Enabled = not isLpMurd and (playersInRound[lp] ~= nil)
