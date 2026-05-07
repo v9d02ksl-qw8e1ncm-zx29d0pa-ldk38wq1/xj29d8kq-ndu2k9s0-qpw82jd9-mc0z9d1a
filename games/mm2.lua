@@ -1928,20 +1928,6 @@ for _, desc in ipairs(Workspace:GetDescendants()) do
     end
 end
 
-task.spawn(function()
-    local found = 0
-    while found < 2 do
-        task.wait(0.5)
-        for _, obj in ipairs(Workspace:GetChildren()) do
-            if obj.Name == "Part" and obj:IsA("BasePart") and obj.Size ~= Vector3.new(4, 4, 4) then
-                obj.Size = Vector3.new(4, 4, 4)
-                found = found + 1
-                print("f.")
-            end
-        end
-    end
-end)
-
 if gunAvailable and innocentGui then
     innocentGui.Enabled = not isLpMurd and (playersInRound[lp] ~= nil)
 end
