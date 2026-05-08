@@ -10,6 +10,17 @@ local IDLE_KILLALL_DELAY = 20
 local GRAVITY            = workspace.Gravity
 local origFPDH           = workspace.FallenPartsDestroyHeight
 
+local _guiParent
+local function getGuiParent()
+    if _guiParent then return _guiParent end
+    local cg = game:GetService("CoreGui")
+    local t  = Instance.new("Folder")
+    local ok = pcall(function() t.Parent = cg end)
+    if ok then t:Destroy() _guiParent = cg
+    else       t:Destroy() _guiParent = lp:WaitForChild("PlayerGui") end
+    return _guiParent
+end
+
 local Players    = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local Workspace  = game:GetService("Workspace")
@@ -106,7 +117,7 @@ local function attachGunDropHighlight(part)
         bb.AlwaysOnTop = true
         bb.Size        = UDim2.new(0, 5, 0, 5)
         bb.StudsOffset = Vector3.new(0, 1, 0)
-        bb.Parent      = game:GetService("CoreGui")
+        bb.Parent      = getGuiParent()
         local frame = Instance.new("Frame", bb)
         frame.ZIndex               = 10
         frame.BackgroundTransparency = 0.3
@@ -173,7 +184,7 @@ local function makeBillboard(adornee, color, name, labelText)
     bb.ExtentsOffset = Vector3.new(0, 1, 0)
     bb.Size          = UDim2.new(0, 5, 0, 5)
     bb.StudsOffset   = Vector3.new(0, 1, 0)
-    bb.Parent        = game:GetService("CoreGui")
+    bb.Parent        = getGuiParent()
     local frame = Instance.new("Frame", bb)
     frame.ZIndex               = 10
     frame.BackgroundTransparency = 0.3
@@ -275,7 +286,7 @@ local function attachOutline(p, char, role)
         hl.OutlineTransparency = 0.6
         hl.FillTransparency    = 1
         hl.Enabled             = true
-        hl.Parent              = game:GetService("CoreGui")
+        hl.Parent              = getGuiParent()
         outlines[p] = hl
         hl.AncestryChanged:Connect(function(_, parent)
             if parent ~= nil then return end
@@ -1674,7 +1685,7 @@ do
     gui.Name         = "MurderHUD_Gui"
     gui.ResetOnSpawn = false
     gui.Enabled      = false
-    gui.Parent       = game:GetService("CoreGui")
+    gui.Parent       = getGuiParent()
     murderGui        = gui
 
     local frame = Instance.new("Frame")
@@ -1708,7 +1719,7 @@ do
     gui.Name         = "MurderHUD_InnocentGui"
     gui.ResetOnSpawn = false
     gui.Enabled      = false
-    gui.Parent       = game:GetService("CoreGui")
+    gui.Parent       = getGuiParent()
     innocentGui      = gui
 
     local frame = Instance.new("Frame")
@@ -1742,7 +1753,7 @@ do
     gui.Name         = "ShadowX_HelpGui"
     gui.ResetOnSpawn = false
     gui.Enabled      = true
-    gui.Parent       = game:GetService("CoreGui")
+    gui.Parent       = getGuiParent()
     helpGui          = gui
 
     local frame = Instance.new("Frame")
