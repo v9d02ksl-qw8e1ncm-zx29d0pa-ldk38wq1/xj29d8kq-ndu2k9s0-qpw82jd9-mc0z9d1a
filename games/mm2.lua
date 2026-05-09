@@ -52,6 +52,8 @@ local afPlatform     = nil
 local smLastPos      = nil
 local knifeSpeedBuf  = {}
 local fbConn         = nil
+local flingActive      = false
+local flingLoopTarget  = nil
 local KNIFE_SPEED_CAP = 10
 local KNIFE_SPEED_DEF = 120
 local FAKE_BOMB_Y_OFFSET = 3.2
@@ -741,6 +743,10 @@ Players.PlayerRemoving:Connect(function(p)
     removeLpVisual(p)
     removeVisuals(p)
     removeOutline(p)
+    if flingLoopTarget == p then
+        flingActive     = false
+        flingLoopTarget = nil
+    end
     if murderer == p then
         murderer = nil
         endRound()
@@ -1878,7 +1884,7 @@ do
     addLine(".help — Open this window")
     addLine(".killall — Kills all players (Murderer only)")
     addLine(".kill username — Kills target player (Murderer only)")
-    addLine(".bye username — Flings the target")
+    addLine(".bye username — Flings the target once. .bye username loop — Flings on loop. .bye stop — Stops loop.")
     addLine(".autofarm — Auto farms exp while AFK. Use again to disable.")
     addLine(".shootmurd — Shoots the murderer if they are hiding or exploiting.")
     addLine(".tp username — Teleports to target. Partial name supported.")
@@ -1904,9 +1910,48 @@ lp.Chatted:Connect(function(msg)
         if not ok then warn("[ShadowX] KillSingle: " .. tostring(err)) end
     elseif lower == ".autofarm" then
         if autofarmActive then stopAutofarm() else autofarmActive = true runAutofarm() end
+    elseif lower == ".bye stop" then
+        flingActive     = false
+        flingLoopTarget = nil
     elseif lower:sub(1, 5) == ".bye " then
-        local ok, err = pcall(doFling, msg:sub(6))
-        if not ok then warn("[ShadowX] Fling: " .. tostring(err)) end
+        local args = msg:sub(6)
+        local name, isLoop
+        if args:lower():sub(-5) == " loop" then
+            name   = args:sub(1, -6)
+            isLoop = true
+        else
+            name   = args
+            isLoop = false
+        end
+        if isLoop then
+            local low = name:lower()
+            local t   = nil
+            for _, p in ipairs(Players:GetPlayers()) do
+                if p ~= lp and p.Name:lower():find(low, 1, true) then t = p break end
+            end
+            if not t then warn("[ShadowX] FlingLoop: not found: " .. name) return end
+            flingActive     = false
+            flingLoopTarget = nil
+            task.wait(0.1)
+            flingActive     = true
+            flingLoopTarget = t
+            task.spawn(function()
+                while flingActive and flingLoopTarget and flingLoopTarget.Parent == Players do
+                    local tChar = flingLoopTarget.Character
+                    if tChar and tChar:FindFirstChild("HumanoidRootPart") then
+                        local ok, err = pcall(SkidFling, flingLoopTarget)
+                        if not ok then warn("[ShadowX] FlingLoop: " .. tostring(err)) end
+                    end
+                    if not flingActive then break end
+                    task.wait(0.5)
+                end
+                flingActive     = false
+                flingLoopTarget = nil
+            end)
+        else
+            local ok, err = pcall(doFling, name)
+            if not ok then warn("[ShadowX] Fling: " .. tostring(err)) end
+        end
     elseif lower == ".shootmurd" then
         local ok, err = pcall(doShootMurd)
         if not ok then warn("[ShadowX] ShootMurd: " .. tostring(err)) end
