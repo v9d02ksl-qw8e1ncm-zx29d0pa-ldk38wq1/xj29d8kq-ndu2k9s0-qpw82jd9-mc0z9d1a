@@ -114,8 +114,74 @@ local myConfig      = ConfigManager:CreateConfig("MM2")
 local function saveConfig()
     local ok, err = pcall(function() myConfig:Save() end)
     if not ok then
-        pcall(function() ConfigManager:Save("MM2") end)
+        local ok2, err2 = pcall(function() ConfigManager:Save("MM2") end)
+        if not ok2 then
+            warn("[ShadowX] Save failed: " .. tostring(err) .. " | fallback: " .. tostring(err2))
+            WindUI:Notify({ Title = "Config", Content = "Failed to save config: " .. tostring(err), Duration = 4, Icon = "x" })
+        end
     end
+end
+
+local function loadConfig()
+    local ok, err = pcall(function() myConfig:Load() end)
+    if not ok then
+        local ok2, err2 = pcall(function() ConfigManager:Load("MM2") end)
+        if not ok2 then
+            warn("[ShadowX] Load failed: " .. tostring(err) .. " | fallback: " .. tostring(err2))
+            WindUI:Notify({ Title = "Config", Content = "Failed to load config: " .. tostring(err), Duration = 4, Icon = "x" })
+            return
+        end
+    end
+
+    task.defer(function()
+        applyWalkSpeed(tostring(WalkSpeedInput.Value or "17"))
+        applyJumpPower(tostring(JumpPowerInput.Value or "50"))
+
+        silentAimEnabled    = SilentAimToggle.Value    or false
+        manualAimEnabled    = ManualAimToggle.Value     or false
+        throwKnifeEnabled   = ThrowKnifeToggle.Value   or false
+        grabGunEnabled      = GrabGunToggle.Value       or false
+        autoGrabGunEnabled  = AutoGrabGunToggle.Value  or false
+        fakeBombEnabled     = FakeBombToggle.Value      or false
+        invisibleEnabled    = InvisibleToggle.Value     or false
+        infiniteJumpEnabled = InfiniteJumpToggle.Value  or false
+
+        espMurder   = MurderEspToggle.Value   ~= false
+        espSheriff  = SheriffEspToggle.Value  ~= false
+        espInnocent = InnocentEspToggle.Value ~= false
+        espGun      = GunEspToggle.Value      ~= false
+
+        if nShootBtn then nShootBtn.Visible = manualAimEnabled   end
+        if nThrowBtn then nThrowBtn.Visible = throwKnifeEnabled  end
+        if nGrabBtn  then nGrabBtn.Visible  = grabGunEnabled     end
+        if nInvisBtn then nInvisBtn.Visible = invisibleEnabled   end
+
+        if TpDropdown.Value    and TpDropdown.Value.Title    then tpTarget    = TpDropdown.Value.Title    end
+        if FlingDropdown.Value and FlingDropdown.Value.Title then flingTarget = FlingDropdown.Value.Title end
+
+        if ThemeDropdown.Value and ThemeDropdown.Value.Title then
+            WindUI:SetTheme(ThemeDropdown.Value.Title)
+        end
+
+        if not espMurder then
+            for p in pairs(visuals) do
+                if roles[p] == "murder" then removeVisuals(p) end
+            end
+        end
+        if not espSheriff then
+            for p in pairs(visuals) do
+                local r = roles[p]
+                if r == "sheriff" or r == "hero" then removeVisuals(p) end
+            end
+        end
+        if not espInnocent then clearAllLpVisuals() end
+        if not espGun then
+            for _, bb in pairs(gunDropHighlights) do
+                if bb and bb.Parent then bb:Destroy() end
+            end
+            gunDropHighlights = {}
+        end
+    end)
 end
 
 Window:EditOpenButton({
@@ -1278,6 +1344,18 @@ local GrabGunToggle = MainTab:Toggle({
     end
 })
 
+local InvisibleToggle = MainTab:Toggle({
+    Title    = "Invisible",
+    Desc     = "Enable the Invisible button",
+    Type     = "Checkbox",
+    Value    = false,
+    Callback = function(state)
+        invisibleEnabled = state
+        if nInvisBtn then nInvisBtn.Visible = state end
+        saveConfig()
+    end
+})
+
 local AutoGrabGunToggle = MainTab:Toggle({
     Title    = "Auto Grab Gun",
     Desc     = "Automatically grabs the gun when it drops",
@@ -1302,18 +1380,6 @@ local FakeBombToggle = MainTab:Toggle({
     Value    = false,
     Callback = function(state)
         fakeBombEnabled = state
-        saveConfig()
-    end
-})
-
-local InvisibleToggle = MainTab:Toggle({
-    Title    = "Invisible",
-    Desc     = "Enable the Invisible button",
-    Type     = "Checkbox",
-    Value    = false,
-    Callback = function(state)
-        invisibleEnabled = state
-        if nInvisBtn then nInvisBtn.Visible = state end
         saveConfig()
     end
 })
@@ -1701,28 +1767,58 @@ end
 nInvisBtn, invisNativeLbl = makeNativeBtn("Invisible", doInvisToggle)
 nInvisBtn.Visible = false
 
+local function applyWalkSpeed(value)
+    local n = tonumber(value)
+    if not n then return end
+    n = math.clamp(n, 0, 100)
+    currentSpeed = n
+    updateLockedStat("WalkSpeed", n)
+end
+
+local function applyJumpPower(value)
+    local n = tonumber(value)
+    if not n then return end
+    n = math.clamp(n, 0, 200)
+    currentJump       = n
+    originalJumpPower = n
+    updateLockedStat("JumpPower", n)
+end
+
 -- ── Players Tab ───────────────────────────────────────────────────────────────
-local WalkSpeedSlider = PlayersTab:Slider({
-    Title = "Walk Speed",
-    Desc  = "Adjust your walk speed",
-    Step  = 1,
-    Value = { Min = 0, Max = 100, Default = 17 },
-    Callback = function(value)
-        currentSpeed = value
-        updateLockedStat("WalkSpeed", value)
+local WalkSpeedInput = PlayersTab:Input({
+    Title       = "Walk Speed",
+    Desc        = "Enter a value between 0 and 100 then press Enter",
+    Icon        = "footprints",
+    Placeholder = "Default: 17",
+    Numeric     = true,
+    Callback    = function(value)
+        local n = tonumber(value)
+        if not n then
+            WindUI:Notify({ Title = "Walk Speed", Content = "Invalid value.", Duration = 3, Icon = "x" })
+            return
+        end
+        n = math.clamp(n, 0, 100)
+        applyWalkSpeed(tostring(n))
+        WindUI:Notify({ Title = "Walk Speed", Content = "Set to " .. n, Duration = 2, Icon = "check" })
         saveConfig()
     end
 })
 
-local JumpPowerSlider = PlayersTab:Slider({
-    Title = "Jump Power",
-    Desc  = "Adjust your jump power",
-    Step  = 1,
-    Value = { Min = 0, Max = 200, Default = 50 },
-    Callback = function(value)
-        currentJump       = value
-        originalJumpPower = value
-        updateLockedStat("JumpPower", value)
+local JumpPowerInput = PlayersTab:Input({
+    Title       = "Jump Power",
+    Desc        = "Enter a value between 0 and 200 then press Enter",
+    Icon        = "arrow-up",
+    Placeholder = "Default: 50",
+    Numeric     = true,
+    Callback    = function(value)
+        local n = tonumber(value)
+        if not n then
+            WindUI:Notify({ Title = "Jump Power", Content = "Invalid value.", Duration = 3, Icon = "x" })
+            return
+        end
+        n = math.clamp(n, 0, 200)
+        applyJumpPower(tostring(n))
+        WindUI:Notify({ Title = "Jump Power", Content = "Set to " .. n, Duration = 2, Icon = "check" })
         saveConfig()
     end
 })
@@ -2069,8 +2165,8 @@ myConfig:Register("MurderEsp",    MurderEspToggle)
 myConfig:Register("SheriffEsp",   SheriffEspToggle)
 myConfig:Register("InnocentEsp",  InnocentEspToggle)
 myConfig:Register("GunEsp",       GunEspToggle)
-myConfig:Register("WalkSpeed",    WalkSpeedSlider)
-myConfig:Register("JumpPower",    JumpPowerSlider)
+myConfig:Register("WalkSpeed", WalkSpeedInput)
+myConfig:Register("JumpPower", JumpPowerInput)
 myConfig:Register("TpTarget",     TpDropdown)
 myConfig:Register("FlingTarget",  FlingDropdown)
 myConfig:Register("Theme",        ThemeDropdown)
@@ -2373,7 +2469,7 @@ task.spawn(function()
 end)
 
 Window:Tag({
-    Title  = "V2.120.22", -- always tell me to change this!
+    Title  = "V2.120.23", -- always tell me to change this!
     Icon   = "github",
     Color  = Color3.fromHex("#30ff6a"),
     Radius = 13,
