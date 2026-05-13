@@ -111,6 +111,13 @@ Window:ToggleTransparency(true)
 local ConfigManager = Window.ConfigManager
 local myConfig      = ConfigManager:CreateConfig("MM2")
 
+local function saveConfig()
+    local ok, err = pcall(function() myConfig:Save() end)
+    if not ok then
+        pcall(function() ConfigManager:Save("MM2") end)
+    end
+end
+
 Window:EditOpenButton({
     Title           = "ShadowX | Official",
     Icon            = "monitor",
@@ -1219,7 +1226,6 @@ local function getPlayerOptions()
 end
 
 -- ── Toggles ───────────────────────────────────────────────────────────────────
-
 local SilentAimToggle = MainTab:Toggle({
     Title    = "Silent Aim",
     Desc     = "Auto-aims and fires at the murderer on left click",
@@ -1227,7 +1233,7 @@ local SilentAimToggle = MainTab:Toggle({
     Value    = false,
     Callback = function(state)
         silentAimEnabled = state
-        myConfig:Save()
+        saveConfig()
     end
 })
 
@@ -1240,7 +1246,7 @@ local ManualAimToggle = MainTab:Toggle({
     Callback = function(state)
         manualAimEnabled = state
         if nShootBtn then nShootBtn.Visible = state end
-        myConfig:Save()
+        saveConfig()
     end
 })
 
@@ -1253,7 +1259,7 @@ local ThrowKnifeToggle = MainTab:Toggle({
     Callback = function(state)
         throwKnifeEnabled = state
         if nThrowBtn then nThrowBtn.Visible = state end
-        myConfig:Save()
+        saveConfig()
     end
 })
 
@@ -1266,7 +1272,7 @@ local GrabGunToggle = MainTab:Toggle({
     Callback = function(state)
         grabGunEnabled = state
         if nGrabBtn then nGrabBtn.Visible = state end
-        myConfig:Save()
+        saveConfig()
     end
 })
 
@@ -1284,7 +1290,7 @@ local AutoGrabGunToggle = MainTab:Toggle({
                 doGrabGun()
             end)
         end
-        myConfig:Save()
+        saveConfig()
     end
 })
 
@@ -1296,7 +1302,7 @@ local FakeBombToggle = MainTab:Toggle({
     Value    = false,
     Callback = function(state)
         fakeBombEnabled = state
-        myConfig:Save()
+        saveConfig()
     end
 })
 
@@ -1309,7 +1315,7 @@ local InvisibleToggle = MainTab:Toggle({
     Callback = function(state)
         invisibleEnabled = state
         if nInvisBtn then nInvisBtn.Visible = state end
-        myConfig:Save()
+        saveConfig()
     end
 })
 
@@ -1557,7 +1563,6 @@ nInvisBtn, invisNativeLbl = makeNativeBtn("👁  Invisible", doInvisToggle)
 nInvisBtn.Visible = false
 
 -- ── Players Tab ───────────────────────────────────────────────────────────────
-
 local WalkSpeedSlider = PlayersTab:Slider({
     Title = "Walk Speed",
     Desc  = "Adjust your walk speed",
@@ -1566,6 +1571,7 @@ local WalkSpeedSlider = PlayersTab:Slider({
     Callback = function(value)
         currentSpeed = value
         updateLockedStat("WalkSpeed", value)
+        saveConfig()
     end
 })
 
@@ -1578,6 +1584,7 @@ local JumpPowerSlider = PlayersTab:Slider({
         currentJump       = value
         originalJumpPower = value
         updateLockedStat("JumpPower", value)
+        saveConfig()
     end
 })
 
@@ -1635,12 +1642,11 @@ local InfiniteJumpToggle = PlayersTab:Toggle({
     Value    = false,
     Callback = function(state)
         infiniteJumpEnabled = state
-        myConfig:Save()
+        saveConfig()
     end
 })
 
 -- ── Visuals Tab ───────────────────────────────────────────────────────────────
-
 local MurderEspToggle = VisualsTab:Toggle({
     Title    = "Murder ESP",
     Desc     = "Show ESP for the Murderer",
@@ -1662,7 +1668,7 @@ local MurderEspToggle = VisualsTab:Toggle({
                 end
             end
         end
-        myConfig:Save()
+        saveConfig()
     end
 })
 
@@ -1691,7 +1697,7 @@ local SheriffEspToggle = VisualsTab:Toggle({
                 end
             end
         end
-        myConfig:Save()
+        saveConfig()
     end
 })
 
@@ -1712,7 +1718,7 @@ local InnocentEspToggle = VisualsTab:Toggle({
                 end
             end
         end
-        myConfig:Save()
+        saveConfig()
     end
 })
 
@@ -1736,7 +1742,7 @@ local GunEspToggle = VisualsTab:Toggle({
                 end
             end
         end
-        myConfig:Save()
+        saveConfig()
     end
 })
 
@@ -1848,7 +1854,6 @@ MiscTab:Button({
 })
 
 -- ── Credits Tab ───────────────────────────────────────────────────────────────
-
 CreditsTab:Paragraph({
     Title         = "ShadowX | Official",
     Desc          = "Made by Jv3xz0. Join our Discord to stay updated with the latest features.",
@@ -1888,7 +1893,7 @@ local ThemeDropdown = SettingsTab:Dropdown({
         { Title = "Custom",          Icon = "palette"        },
     },
     Value    = "Dark",
-    Callback = function(option) WindUI:SetTheme(option.Title) end
+    Callback = function(option) WindUI:SetTheme(option.Title) saveConfig() end
 })
 
 local ThemeColor = SettingsTab:Colorpicker({
