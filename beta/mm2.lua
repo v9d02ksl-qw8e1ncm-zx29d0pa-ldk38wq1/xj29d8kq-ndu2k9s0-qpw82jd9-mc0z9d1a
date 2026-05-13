@@ -2204,13 +2204,8 @@ UIS.InputEnded:Connect(function(input)
     local wsModel = Workspace:FindFirstChild(lp.Name)
     if not wsModel or not wsModel:FindFirstChild("Gun") then return end
     local aimPos = getAimPosition()
-    if not aimPos then return end
     local remote = getShootRemote()
-    if not remote then return end
-    local ok, err = pcall(function()
-        remote:FireServer(CFrame.new(myHRP.Position, aimPos), CFrame.new(aimPos))
-    end)
-    if not ok then warn("[ShadowX] SilentAim shoot: " .. tostring(err)) end
+    remote:FireServer(CFrame.new(myHRP.Position, aimPos), CFrame.new(aimPos))
 end)
 
 UIS.JumpRequest:Connect(function()
