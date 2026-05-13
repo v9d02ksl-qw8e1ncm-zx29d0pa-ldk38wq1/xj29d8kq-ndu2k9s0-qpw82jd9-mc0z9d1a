@@ -1223,7 +1223,6 @@ end
 local SilentAimToggle = MainTab:Toggle({
     Title    = "Silent Aim",
     Desc     = "Auto-aims and fires at the murderer on left click",
-    Icon     = "target",
     Type     = "Checkbox",
     Value    = false,
     Callback = function(state)
