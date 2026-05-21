@@ -1,134 +1,148 @@
-local TOKEN = "blackassnigga"
-local realPrint = print
-local realWarn = warn
-local realError = error
+local requestFunction = (syn or http).request
 
-local function isAllowed(args)
-    return args[#args] == TOKEN
-end
+local methodCheck = {
+    HttpGet = not syn,
+    HttpGetAsync = not syn,
+    GetObjects = true,
+    HttpPost = not syn,
+    HttpPostAsync = not syn,
+}
 
-local function stripToken(args)
-    local t = table.clone(args)
-    table.remove(t, #t)
-    return t
-end
+local detectionMessage = 'detected twin lol'
+local detectionTriggered = false
 
--- hooks
-hookfunction(print, function(...)
-    local args = {...}
-    if isAllowed(args) then
-        return realPrint(table.unpack(stripToken(args)))
-    end
-end)
-
-hookfunction(warn, function(...)
-    local args = {...}
-    if isAllowed(args) then
-        return realWarn(table.unpack(stripToken(args)))
-    end
-end)
-
-hookfunction(error, function(...)
-    local args = {...}
-    if isAllowed(args) then
-        return realError(table.unpack(stripToken(args)))
-    end
-end)
-
--- writefile / appendfile guards
-local oldwrite
-oldwrite = hookfunction(writefile, function(file, content)
-    local low = string.lower(content)
-    if string.find(low, 'https://') or string.find(low, '//') then return end
-    return oldwrite(file, content)
-end)
-
-local oldappend
-oldappend = hookfunction(appendfile, function(file, content)
-    local low = string.lower(content)
-    if string.find(low, 'https://') or string.find(low, '//') then return end
-    return oldappend(file, content)
-end)
-
--- destroy url textlabels/buttons
-game.DescendantAdded:Connect(function(c)
-    if c and (c:IsA('TextLabel') or c:IsA('TextButton') or c:IsA('Message')) then
-        if string.find(string.lower(c.Text), 'https://') then
-            c:Destroy()
-        end
-    end
-end)
-
--- nuke console globals
-getgenv().rconsoletitle = nil
-getgenv().rconsoleprint = nil
-getgenv().rconsolewarn = nil
-getgenv().rconsoleinfo = nil
-getgenv().rconsolerr = nil
-
--- renv: token-aware
-local function makeGuard(real)
-    return function(...)
-        local args = {...}
-        if isAllowed(args) then
-            return real(table.unpack(stripToken(args)))
-        end
-    end
-end
-
-getrenv().print = makeGuard(realPrint)
-getrenv().warn  = makeGuard(realWarn)
-getrenv().error = makeGuard(realError)
-
--- genv: token-aware (this is what loadstring scripts actually call)
-getgenv().print = makeGuard(realPrint)
-getgenv().warn = makeGuard(realWarn)
-getgenv().error = makeGuard(realError)
-getgenv().clonefunction = function() end
-
--- destroy devconsole on spawn
-game.CoreGui.ChildAdded:Connect(function(c)
-    if string.lower(c.Name) == 'devconsolemaster' then
-        task.wait(0.1)
-        c:Destroy()
-    end
-end)
-
--- namecall block
-local oldNamecall
-oldNamecall = hookmetamethod(game, '__namecall', newcclosure(function(self, ...)
-    local method = string.lower(getnamecallmethod())
-    local args = {...}
-    if method == 'print' then
-        if isAllowed(args) then return realPrint(table.unpack(stripToken(args))) end
-        return
-    end
-
-    if method == 'warn' then
-        if isAllowed(args) then return realWarn(table.unpack(stripToken(args))) end
-        return
-    end
-
-    if method == 'error' then
-        if isAllowed(args) then return realError(table.unpack(stripToken(args))) end
-        return
-    end
-
-    if method == 'rconsoleprint'
-    or method == 'rconsoleinfo'
-    or method == 'rconsolewarn'
-    or method == 'rconsoleerr' then
-        return task.wait(9e9)
-    end
-    if method == 'rendernametag' then return end
-    return oldNamecall(self, ...)
-end))
-
--- clear output every frame + nuke devconsole
 task.spawn(function()
-    game:GetService('RunService').RenderStepped:Connect(function()
-        game:GetService('LogService'):ClearOutput()
-        local dc = game.CoreGui:FindFirstChild('DevConsoleMaster')
-        if dc then dc:Destroy() end
-    end)
+    while task.wait(1) do
+        local function recursiveStackCheck(counter, maxCount)
+            if maxCount < 19991 then
+                return recursiveStackCheck(counter, maxCount + 1)
+            end
+            counter('Hello')
+        end
+            
+        local success, stackResult = pcall(recursiveStackCheck, http.request, -4)
+        local outputFunctions = {
+            rconsoleprint,
+            print,
+            setclipboard,
+            rconsoleclear,
+            rconsolewarn,
+            warn,
+            error,
+        }
+
+        local nextFunction = next
+        local functionList = outputFunctions
+        local currentIndex = nil
+
+        while true do
+            local key, value = nextFunction(outputFunctions, currentIndex)
+            if key == nil then
+                break
+            end
+            currentIndex = key
+
+            local originalFunction = nil
+            originalFunction = hookfunction(value, newcclosure(function(...)
+                local nextArg = next
+                local args = {...}
+                local argIndex = nil
+                while true do
+                    local argKey, argValue
+                    argIndex, argValue = nextArg(args, argIndex)
+                    if argIndex == nil then
+                        break
+                    end
+                    if tostring(argIndex):find('https') or tostring(argValue):find('https') then
+                        rconsolewarn(detectionMessage)
+                        error(detectionMessage)
+                        warn(detectionMessage)
+                        print(detectionMessage)
+                        return rconsolewarn(detectionMessage)
+                    end
+                end
+                return originalFunction(...)
+            end))
+        end
+
+        local pairFunction, tableValue, index = pairs(outputFunctions)
+        while true do
+            local funcKey
+            index, funcKey = pairFunction(tableValue, index)
+            if index == nil then
+                break
+            end
+            restorefunction(funcKey)
+        end
+
+        if stackResult:find('stack') then
+            detectionTriggered = true
+            hookfunction(http and http.request or function() end, newcclosure(function(requestParams)
+                if checkcaller() then
+                    return originalHttpRequest(requestParams)
+                end
+                requestParams.Url = detectionMessage
+                return rconsolewarn(detectionMessage)
+            end))
+
+            hookfunction(game.HttpGet, newcclosure(function(self, url, ...)
+                if checkcaller() then
+                    return originalHttpGet(self, url, ...)
+                else
+                    return detectionMessage
+                end
+            end))
+                
+            local originalNamecall = nil
+            originalNamecall = hookmetamethod(game, '__namecall', newcclosure(function(self, ...)
+                if not methodCheck[getnamecallmethod()] then
+                    return originalNamecall(self, ...)
+                end
+                rconsolewarn(detectionMessage)
+                return detectionMessage
+            end))
+
+            local originalRequest = nil
+            originalRequest = hookfunction(requestFunction, newcclosure(function(requestData)
+                if typeof(requestData) ~= 'table' then
+                    return originalRequest(requestData)
+                end
+                rconsolewarn(detectionMessage)
+                requestData.Url = detectionMessage
+                return originalRequest(requestData.Url)
+            end))
+
+            hookfunction(rconsolewarn, newcclosure(function()
+                return detectionMessage
+            end))
+
+            hookfunction(rconsoleprint, newcclosure(function()
+                return detectionMessage
+            end))
+        end
+            
+        if detectionTriggered then
+            task.spawn(function()
+                while true do
+                    rconsoleinfo(detectionMessage)
+                    task.wait()
+                end
+            end)
+        end
+    end
 end)
+
+local fileList = listfiles and listfiles('') or {}
+local iterate, tableValue, index = ipairs(fileList)
+local message = detectionMessage
+
+while true do
+    local fileName
+    index, fileName = iterate(tableValue, index)
+    if index == nil then
+        break
+    end
+    if string.find(fileName:lower(), 'log') then
+        return rconsoleprint(message .. 'fuck you nigga')
+    end
+end
