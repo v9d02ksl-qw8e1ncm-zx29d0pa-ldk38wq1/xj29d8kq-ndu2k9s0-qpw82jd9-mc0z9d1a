@@ -99,10 +99,10 @@ WindUI:AddTheme({ Name = "Custom",          Accent = Color3.fromHex("#FF0F7B"), 
 WindUI:SetTheme("Dark")
 
 local Window = WindUI:CreateWindow({
-    Title       = "MM2 ShadowX | Official",
+    Title       = "MM2 V0id | Official",
     Icon        = "sword",
     Author      = "by Jv3xz0",
-    Folder      = "ShadowX",
+    Folder      = "V0id",
     Transparent = true,
     Theme       = "Dark",
 })
