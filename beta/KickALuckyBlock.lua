@@ -140,7 +140,7 @@ local function runAutoKick()
 
         if not waitForRootPartStill() then
             if not autoKickActive then break end
-            task.wait(0.5)
+            task.wait(0.4)
             continue
         end
         if not autoKickActive then break end
@@ -150,20 +150,32 @@ local function runAutoKick()
         hrp = c and c:FindFirstChild("HumanoidRootPart")
         kickReady = workspace.Areas:FindFirstChild("KickReady")
         if hrp and kickReady then
-            local tween = TweenService:Create(
-                hrp,
-                TweenInfo.new(tweenSpeed, Enum.EasingStyle.Sine, Enum.EasingDirection.Out),
-                { CFrame = CFrame.new(kickReady.Position) }
-            )
-            tween:Play()
+            -- velocity-based walk back to KickReady
+            c = lp.Character
+            hrp = c and c:FindFirstChild("HumanoidRootPart")
+            kickReady = workspace.Areas:FindFirstChild("KickReady")
+            if hrp and kickReady then
+                local target = Vector3.new(kickReady.Position.X, hrp.Position.Y, kickReady.Position.Z)
 
-            -- wait for tween with cancel support
-            local tw = 0
-            while tw < tweenSpeed and autoKickActive do
-                task.wait(0.1)
-                tw += 0.1
+                local bv = Instance.new("BodyVelocity")
+                bv.MaxForce = Vector3.new(1e4, 0, 1e4) -- no Y force, let gravity handle it
+                bv.P = 1e4
+                bv.Parent = hrp
+
+                while autoKickActive do
+                    local diff = target - hrp.Position
+                    local dist = Vector3.new(diff.X, 0, diff.Z).Magnitude
+                    if dist < 0.8 then break end
+                    local speed = math.clamp(dist / tweenSpeed, 1, 30)
+                    bv.Velocity = Vector3.new(diff.X, 0, diff.Z).Unit * speed
+                    task.wait(0.05)
+                end
+
+                bv.Velocity = Vector3.zero
+                bv:Destroy()
+
+                if not autoKickActive then break end
             end
-            if not autoKickActive then tween:Cancel() break end
         end
 
         task.wait(0.2)
